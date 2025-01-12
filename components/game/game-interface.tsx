@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSupabase } from '@/components/providers/supabase-provider'
 import { GameService } from '@/lib/game/game-service'
 import { type GuessFeedback, MINECRAFT_BLOCKS } from '@/lib/game/constants'
+import { type Database } from '@/types/database'
+
+type GameState = Database['public']['Tables']['games']['Row']
 
 const gameService = new GameService()
 
@@ -12,16 +15,10 @@ export default function GameInterface() {
   const [guess, setGuess] = useState('')
   const [feedback, setFeedback] = useState<GuessFeedback | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [currentGame, setCurrentGame] = useState<any>(null)
+  const [currentGame, setCurrentGame] = useState<GameState | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (user) {
-      loadCurrentGame()
-    }
-  }, [user])
-
-  const loadCurrentGame = async () => {
+  const loadCurrentGame = useCallback(async () => {
     if (!user) return
     try {
       const game = await gameService.getCurrentGame(user.id)
@@ -29,7 +26,13 @@ export default function GameInterface() {
     } catch (error) {
       console.error('Error loading game:', error)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadCurrentGame()
+    }
+  }, [user, loadCurrentGame])
 
   const startNewGame = async () => {
     if (!user) return

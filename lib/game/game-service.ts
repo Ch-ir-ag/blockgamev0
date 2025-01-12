@@ -4,12 +4,14 @@ import {
   type GuessFeedback,
   MAX_ATTEMPTS,
   POINTS_PER_GUESS,
-  TIME_BONUS_POINTS,
   getRandomBlock,
   calculateSimilarities,
   generateFeedbackMessage,
   MINECRAFT_BLOCKS,
 } from './constants'
+import { type Database } from '@/types/database'
+
+type GameState = Database['public']['Tables']['games']['Row']
 
 export class GameService {
   private supabase = createClient()
@@ -37,7 +39,7 @@ export class GameService {
     userId: string,
     gameId: string,
     guessedBlock: string
-  ): Promise<{ feedback: GuessFeedback; gameState: any }> {
+  ): Promise<{ feedback: GuessFeedback; gameState: GameState }> {
     // Validate the guessed block
     if (!MINECRAFT_BLOCKS.includes(guessedBlock as MinecraftBlock)) {
       throw new Error('Invalid block name')
