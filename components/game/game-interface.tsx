@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSupabase } from '@/components/providers/supabase-provider'
-import { GameService } from '@/lib/game/game-service'
-import { type GuessFeedback, MINECRAFT_BLOCKS } from '@/lib/game/constants'
+import { GameService, type GuessFeedback } from '@/lib/game/game-service'
+import { MINECRAFT_BLOCKS } from '@/lib/game/constants'
 import { type Database } from '@/types/database'
 
 type GameState = Database['public']['Tables']['games']['Row']
@@ -157,17 +157,10 @@ export default function GameInterface() {
 
         {feedback && currentGame.status !== 'completed' && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Feedback:</h3>
-            <p className="text-gray-600 dark:text-gray-300">{feedback.message}</p>
-            <div className="mt-2 space-y-1">
-              {Object.entries(feedback.similarities).map(([key, value]) => (
-                value && (
-                  <div key={key} className="text-sm text-gray-500 dark:text-gray-400">
-                    ✓ Matching {key}
-                  </div>
-                )
-              ))}
-            </div>
+            <h3 className="text-lg font-semibold mb-2">Hint:</h3>
+            <p className="text-gray-600 dark:text-gray-300 italic">
+              "{feedback.hint}"
+            </p>
           </div>
         )}
       </div>

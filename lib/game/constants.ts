@@ -1,93 +1,151 @@
 // List of Minecraft blocks that can be used in the game
 export const MINECRAFT_BLOCKS = [
+  // Building Blocks
   'stone',
-  'grass_block',
-  'dirt',
+  'granite',
+  'diorite',
+  'andesite',
+  'deepslate',
   'cobblestone',
+  'mossy_cobblestone',
+  'smooth_stone',
+  'sandstone',
+  'red_sandstone',
+  'obsidian',
+  'bedrock',
+  
+  // Wood Types
   'oak_planks',
   'spruce_planks',
   'birch_planks',
   'jungle_planks',
   'acacia_planks',
   'dark_oak_planks',
-  'bedrock',
-  'sand',
-  'gravel',
+  'mangrove_planks',
+  'cherry_planks',
+  'bamboo_planks',
   'oak_log',
   'spruce_log',
   'birch_log',
   'jungle_log',
   'acacia_log',
   'dark_oak_log',
+  'mangrove_log',
+  'cherry_log',
+  
+  // Nature
+  'grass_block',
+  'dirt',
+  'coarse_dirt',
+  'podzol',
+  'rooted_dirt',
+  'mud',
+  'clay',
+  'moss_block',
+  
+  // Ores and Minerals
+  'coal_ore',
+  'iron_ore',
+  'gold_ore',
+  'diamond_ore',
+  'emerald_ore',
+  'lapis_ore',
+  'redstone_ore',
+  'copper_ore',
+  
+  // Decorative
   'glass',
+  'tinted_glass',
+  'bookshelf',
+  'crafting_table',
+  'furnace',
+  'jukebox',
+  'note_block',
+  'tnt',
+  
+  // Nether
+  'netherrack',
+  'soul_sand',
+  'soul_soil',
+  'glowstone',
+  'nether_bricks',
+  'crimson_stem',
+  'warped_stem',
+  
+  // End
+  'end_stone',
+  'purpur_block',
+  'end_stone_bricks',
+  
+  // Colored Blocks
+  'white_wool',
+  'orange_wool',
+  'magenta_wool',
+  'light_blue_wool',
+  'yellow_wool',
+  'lime_wool',
+  'pink_wool',
+  'gray_wool',
+  'light_gray_wool',
+  'cyan_wool',
+  'purple_wool',
+  'blue_wool',
+  'brown_wool',
+  'green_wool',
+  'red_wool',
+  'black_wool',
+  
+  // Concrete
+  'white_concrete',
+  'orange_concrete',
+  'magenta_concrete',
+  'light_blue_concrete',
+  'yellow_concrete',
+  'lime_concrete',
+  'pink_concrete',
+  'gray_concrete',
+  'light_gray_concrete',
+  'cyan_concrete',
+  'purple_concrete',
+  'blue_concrete',
+  'brown_concrete',
+  'green_concrete',
+  'red_concrete',
+  'black_concrete'
 ] as const
 
 export type MinecraftBlock = typeof MINECRAFT_BLOCKS[number]
 
 export const MAX_ATTEMPTS = 6
-export const POINTS_PER_GUESS = 100 // Base points for correct guess
-export const TIME_BONUS_POINTS = 50 // Bonus points for quick guesses
+export const POINTS_PER_GUESS = 100
 
-// Feedback types for guesses
-export type GuessFeedback = {
-  isCorrect: boolean
-  similarities: {
-    material?: boolean    // e.g., both wood-based
-    type?: boolean        // e.g., both are planks
-    variant?: boolean     // e.g., both are oak
+// Categories for better hints
+export const BLOCK_CATEGORIES = {
+  building: ['stone', 'granite', 'diorite', 'andesite', 'deepslate', 'cobblestone', 'sandstone'],
+  wood: ['oak_planks', 'spruce_planks', 'birch_planks', 'jungle_planks', 'acacia_planks', 'dark_oak_planks'],
+  nature: ['grass_block', 'dirt', 'coarse_dirt', 'podzol', 'mud', 'clay', 'moss_block'],
+  ores: ['coal_ore', 'iron_ore', 'gold_ore', 'diamond_ore', 'emerald_ore', 'lapis_ore', 'redstone_ore'],
+  decorative: ['glass', 'tinted_glass', 'bookshelf', 'crafting_table', 'furnace', 'jukebox'],
+  nether: ['netherrack', 'soul_sand', 'soul_soil', 'glowstone', 'nether_bricks'],
+  end: ['end_stone', 'purpur_block', 'end_stone_bricks'],
+  colored: [
+    'white_wool', 'orange_wool', 'magenta_wool', 'yellow_wool',
+    'white_concrete', 'orange_concrete', 'magenta_concrete', 'yellow_concrete'
+  ]
+} as const
+
+// Helper function to get block category
+export const getBlockCategory = (block: MinecraftBlock): string => {
+  for (const [category, blocks] of Object.entries(BLOCK_CATEGORIES)) {
+    if ((blocks as readonly string[]).includes(block)) {
+      return category
+    }
   }
-  message: string
+  return 'other'
 }
 
 // Helper function to get a random block
 export const getRandomBlock = (): MinecraftBlock => {
   const randomIndex = Math.floor(Math.random() * MINECRAFT_BLOCKS.length)
   return MINECRAFT_BLOCKS[randomIndex]
-}
-
-// Helper function to calculate block similarities
-export const calculateSimilarities = (target: MinecraftBlock, guess: MinecraftBlock) => {
-  const similarities = {
-    material: false,
-    type: false,
-    variant: false,
-  }
-
-  // Check material (wood, stone, etc.)
-  const materials = ['oak', 'spruce', 'birch', 'jungle', 'acacia', 'dark_oak', 'stone']
-  materials.forEach(material => {
-    if (target.includes(material) && guess.includes(material)) {
-      similarities.material = true
-    }
-  })
-
-  // Check type (planks, log, etc.)
-  const types = ['planks', 'log', 'block']
-  types.forEach(type => {
-    if (target.includes(type) && guess.includes(type)) {
-      similarities.type = true
-    }
-  })
-
-  // Check variant (specific type of wood, etc.)
-  if (target.split('_')[0] === guess.split('_')[0]) {
-    similarities.variant = true
-  }
-
-  return similarities
-}
-
-// Helper function to generate feedback message
-export const generateFeedbackMessage = (similarities: GuessFeedback['similarities']): string => {
-  if (similarities.variant && similarities.type) {
-    return "Very close! You've got the right variant and type!"
-  } else if (similarities.material && similarities.type) {
-    return "Close! You've got the right material and type!"
-  } else if (similarities.material) {
-    return "You're on the right track with the material!"
-  } else if (similarities.type) {
-    return "Right type of block, wrong material!"
-  } else {
-    return "Try something completely different!"
-  }
 } 

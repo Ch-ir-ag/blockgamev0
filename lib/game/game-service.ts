@@ -1,17 +1,19 @@
 import { createClient } from '@/lib/supabase/client'
 import {
   type MinecraftBlock,
-  type GuessFeedback,
   MAX_ATTEMPTS,
   POINTS_PER_GUESS,
   getRandomBlock,
-  calculateSimilarities,
-  generateFeedbackMessage,
   MINECRAFT_BLOCKS,
 } from './constants'
 import { type Database } from '@/types/database'
 
 type GameState = Database['public']['Tables']['games']['Row']
+
+export type GuessFeedback = {
+  isCorrect: boolean
+  hint: string
+}
 
 export class GameService {
   private supabase = createClient()
@@ -58,17 +60,34 @@ export class GameService {
     if (game.status !== 'active') throw new Error('Game is not active')
     if (game.attempts_remaining <= 0) throw new Error('No attempts remaining')
 
-    // Calculate feedback
-    const similarities = calculateSimilarities(
-      game.target_block as MinecraftBlock,
-      guessedBlock as MinecraftBlock
-    )
+    // Get previous hints for this game
+    const { data: previousGuesses } = await this.supabase
+      .from('guesses')
+      .select('feedback')
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: true })
 
+    const previousHints = previousGuesses?.map(g => g.feedback.hint) || []
+
+    // Get hint from our API
+    const hintResponse = await fetch('/api/generate-hint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        targetBlock: game.target_block,
+        guessedBlock,
+        previousHints,
+      }),
+    })
+
+    const { hint } = await hintResponse.json()
     const isCorrect = game.target_block === guessedBlock
+
     const feedback: GuessFeedback = {
       isCorrect,
-      similarities,
-      message: isCorrect ? 'Correct!' : generateFeedbackMessage(similarities),
+      hint,
     }
 
     // Calculate score for this guess
