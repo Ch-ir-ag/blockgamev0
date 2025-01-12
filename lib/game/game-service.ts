@@ -1,0 +1,157 @@
+import { createClient } from '@/lib/supabase/client'
+import {
+  type MinecraftBlock,
+  type GuessFeedback,
+  MAX_ATTEMPTS,
+  POINTS_PER_GUESS,
+  TIME_BONUS_POINTS,
+  getRandomBlock,
+  calculateSimilarities,
+  generateFeedbackMessage,
+  MINECRAFT_BLOCKS,
+} from './constants'
+
+export class GameService {
+  private supabase = createClient()
+
+  async startNewGame(userId: string) {
+    const targetBlock = getRandomBlock()
+    
+    const { data: game, error } = await this.supabase
+      .from('games')
+      .insert({
+        user_id: userId,
+        target_block: targetBlock,
+        status: 'active',
+        attempts_remaining: MAX_ATTEMPTS,
+        score: 0,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return game
+  }
+
+  async submitGuess(
+    userId: string,
+    gameId: string,
+    guessedBlock: string
+  ): Promise<{ feedback: GuessFeedback; gameState: any }> {
+    // Validate the guessed block
+    if (!MINECRAFT_BLOCKS.includes(guessedBlock as MinecraftBlock)) {
+      throw new Error('Invalid block name')
+    }
+
+    // Get the current game
+    const { data: game, error: gameError } = await this.supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .eq('user_id', userId)
+      .single()
+
+    if (gameError) throw gameError
+    if (!game) throw new Error('Game not found')
+    if (game.status !== 'active') throw new Error('Game is not active')
+    if (game.attempts_remaining <= 0) throw new Error('No attempts remaining')
+
+    // Calculate feedback
+    const similarities = calculateSimilarities(
+      game.target_block as MinecraftBlock,
+      guessedBlock as MinecraftBlock
+    )
+
+    const isCorrect = game.target_block === guessedBlock
+    const feedback: GuessFeedback = {
+      isCorrect,
+      similarities,
+      message: isCorrect ? 'Correct!' : generateFeedbackMessage(similarities),
+    }
+
+    // Calculate score for this guess
+    let scoreUpdate = 0
+    if (isCorrect) {
+      scoreUpdate = POINTS_PER_GUESS * game.attempts_remaining
+    }
+
+    // Update game state
+    const { data: updatedGame, error: updateError } = await this.supabase
+      .from('games')
+      .update({
+        attempts_remaining: game.attempts_remaining - 1,
+        status: isCorrect ? 'completed' : game.attempts_remaining <= 1 ? 'completed' : 'active',
+        score: game.score + scoreUpdate,
+      })
+      .eq('id', gameId)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    // Record the guess
+    const { error: guessError } = await this.supabase.from('guesses').insert({
+      game_id: gameId,
+      user_id: userId,
+      guessed_block: guessedBlock,
+      is_correct: isCorrect,
+      feedback,
+    })
+
+    if (guessError) throw guessError
+
+    // Update leaderboard
+    if (isCorrect || game.attempts_remaining <= 1) {
+      await this.updateLeaderboard(userId, scoreUpdate)
+    }
+
+    return { feedback, gameState: updatedGame }
+  }
+
+  private async updateLeaderboard(userId: string, scoreToAdd: number) {
+    const { data, error } = await this.supabase
+      .from('leaderboard')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      throw error
+    }
+
+    if (data) {
+      // Update existing record
+      await this.supabase
+        .from('leaderboard')
+        .update({
+          total_score: data.total_score + scoreToAdd,
+          games_played: data.games_played + 1,
+        })
+        .eq('user_id', userId)
+    } else {
+      // Create new record
+      await this.supabase
+        .from('leaderboard')
+        .insert({
+          user_id: userId,
+          total_score: scoreToAdd,
+          games_played: 1,
+          best_streak: 0,
+        })
+    }
+  }
+
+  async getCurrentGame(userId: string) {
+    const { data, error } = await this.supabase
+      .from('games')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+  }
+} 
