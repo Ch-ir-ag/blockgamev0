@@ -159,7 +159,7 @@ export default function GameInterface() {
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Hint:</h3>
             <p className="text-gray-600 dark:text-gray-300 italic">
-              "{feedback.hint}"
+              &ldquo;{feedback.hint}&rdquo;
             </p>
           </div>
         )}

@@ -2,11 +2,6 @@ import { NextResponse } from 'next/server'
 import { getBlockCategory } from '@/lib/game/constants'
 import { validateEnv } from '../validate-env'
 
-const HUGGING_FACE_API_URL = "https://api-inference.huggingface.co/models/gpt2"
-
-// Helper function to wait
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
 export async function POST(request: Request) {
   let requestData;
   try {
